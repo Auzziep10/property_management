@@ -81,10 +81,14 @@ export function AuthProvider({ children }) {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             setCurrentUser(user);
             if (user) {
-                // Fetch user profile to get businessId
-                const userDoc = await getDoc(doc(db, 'users', user.uid));
-                if (userDoc.exists()) {
-                    setUserProfile(userDoc.data());
+                try {
+                    // Fetch user profile to get businessId
+                    const userDoc = await getDoc(doc(db, 'users', user.uid));
+                    if (userDoc.exists()) {
+                        setUserProfile(userDoc.data());
+                    }
+                } catch (error) {
+                    console.error("Error fetching user profile:", error);
                 }
             } else {
                 setUserProfile(null);
