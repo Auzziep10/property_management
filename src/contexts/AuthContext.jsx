@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
+import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth, db } from '../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
@@ -39,6 +39,40 @@ export function AuthProvider({ children }) {
         return userCredential;
     }
 
+    async function loginWithGoogle() {
+        const provider = new GoogleAuthProvider();
+        const result = await signInWithPopup(auth, provider);
+        const user = result.user;
+
+        // Check if user exists in Firestore
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDoc = await getDoc(userDocRef);
+
+        if (!userDoc.exists()) {
+            // First time login via Google, create business and user config
+            const businessId = `biz_${user.uid}`;
+            await setDoc(doc(db, 'businesses', businessId), {
+                name: `${user.displayName || 'My'} Business`,
+                createdAt: new Date()
+            });
+
+            await setDoc(userDocRef, {
+                email: user.email,
+                displayName: user.displayName || 'User',
+                businessId,
+                role: 'owner'
+            });
+
+            setUserProfile({
+                email: user.email,
+                displayName: user.displayName || 'User',
+                businessId,
+                role: 'owner'
+            });
+        }
+        return result;
+    }
+
     function logout() {
         return signOut(auth);
     }
@@ -66,6 +100,7 @@ export function AuthProvider({ children }) {
         userProfile,
         login,
         register,
+        loginWithGoogle,
         logout
     };
 
